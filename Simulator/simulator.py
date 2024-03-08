@@ -9,10 +9,13 @@ import numpy as np
 ursina_app = Ursina()
 flask_app = Flask(__name__)
 EditorCamera(rotation=(30,-120,0))
-Entity(model='plane', scale=10, color=color.gray,
-shader=basic_lighting_shader)
+Entity(model='plane', scale=10, color=color.gray, shader=basic_lighting_shader)
 
-pivot1 = Entity(y=0.3)
+pivot0 = Entity()
+joint1 = Entity(model=Cylinder(16, start=-0.5), scale=(0.5,0.1,0.5),rotation=(0,0,0),parent=pivot0,color=color.orange)
+beam0 = Entity(model='cube', parent=pivot0 ,y=0.15, scale=(0.3,0.3,0.3), shader=basic_lighting_shader, color=color.gray)
+
+pivot1 = Entity(y=0.3, parent=pivot0)
 joint1 = Entity(model=Cylinder(16, start=-0.5), scale=(0.3,0.5,0.3),rotation=(0,0,90),parent=pivot1,color=color.orange)
 beam1 = Entity(model='cube', parent=pivot1 ,y=1, scale=(0.3,2,0.3), shader=basic_lighting_shader, color=color.gray)
 
@@ -28,6 +31,8 @@ pivot4 = Entity(y=0.5, parent=pivot3)
 joint4 = Entity(model=Cylinder(16, start=-0.5), scale=(0.3,0.5,0.3),rotation=(90,0,0),parent=pivot4,color=color.orange)
 beam4 = Entity(model='cube', parent=pivot4 ,y=0.25, scale=(0.3,0.5,0.3), shader=basic_lighting_shader, color=color.gray)
 
+target0 = 0
+speed0 = 360
 target1 = 0
 speed1 = 360
 target2 = 90
@@ -38,6 +43,10 @@ target4 = 0
 speed4 = 360
 
 def update():
+    if pivot0.rotation_y != target0:
+        err = target0-pivot0.rotation_y
+        pivot0.rotation_y += min(err, speed0*time.dt) if err > 0 else max(err, -speed0*time.dt)
+
     if pivot1.rotation_x != target1:
         err = target1-pivot1.rotation_x
         pivot1.rotation_x += min(err, speed1*time.dt) if err > 0 else max(err, -speed1*time.dt)
@@ -61,11 +70,13 @@ def move():
     except Exception:
         return make_response("Malformed JSON body", 400)
 
-    global target1, target2, target3, target4, speed1, speed2, speed3, speed4
+    global target0, target1, target2, target3, target4, speed0, speed1, speed2, speed3, speed4
 
     if "speed" not in data:
         return make_response("Speed field Required", 400)
 
+    if "angle0" in data:
+        target0 = data["angle0"]
     if "angle1" in data:
         target1 = data["angle1"]
     if "angle2" in data:
@@ -75,20 +86,24 @@ def move():
     if "angle4" in data:
         target4 = data["angle4"]
 
+    d0 = np.abs(target0 - pivot0.rotation_y)
     d1 = np.abs(target1 - pivot1.rotation_x)
     d2 = np.abs(target2 - pivot2.rotation_x)
     d3 = np.abs(target3 - pivot3.rotation_x)
     d4 = np.abs(target4 - pivot4.rotation_z)
 
-    dmax = max(d1,d2,d3,d4)
+    dmax = max(d0,d1,d2,d3,d4)
 
-    print(f"d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}, max: {dmax}")
+    print(f"d0: {d0}, d1: {d1}, d2: {d2}, d3: {d3}, d4: {d4}, max: {dmax}")
 
     speed = data["speed"]
+    speed0 = d0 / dmax * speed
     speed1 = d1 / dmax * speed
     speed2 = d2 / dmax * speed
     speed3 = d3 / dmax * speed
     speed4 = d4 / dmax * speed
+
+    print(f"speed0: {speed0}, speed1: {speed1}, speed2: {speed2}, speed3: {speed3}, speed4: {speed4}, speed: {speed}")
 
     return make_response("", 200)
 
