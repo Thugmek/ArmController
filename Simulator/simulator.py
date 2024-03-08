@@ -31,6 +31,11 @@ pivot4 = Entity(y=0.5, parent=pivot3)
 joint4 = Entity(model=Cylinder(16, start=-0.5), scale=(0.3,0.5,0.3),rotation=(90,0,0),parent=pivot4,color=color.orange)
 beam4 = Entity(model='cube', parent=pivot4 ,y=0.25, scale=(0.3,0.5,0.3), shader=basic_lighting_shader, color=color.gray)
 
+particle = Entity(model=Mesh(vertices=[(0,0,0),(1,0,0)], mode='line', static=False, render_points_in_3d=True, thickness=5), color=color.red, parent=pivot4, y=0.5)
+particle2 = Entity(model=Mesh(vertices=[(0,0,0),(0,1,0)], mode='line', static=False, render_points_in_3d=True, thickness=5), color=color.green, parent=pivot4, y=0.5)
+particle3 = Entity(model=Mesh(vertices=[(0,0,0),(0,0,1)], mode='line', static=False, render_points_in_3d=True, thickness=5), color=color.blue, parent=pivot4, y=0.5)
+
+
 target0 = 0
 speed0 = 360
 target1 = 0
