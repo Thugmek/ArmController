@@ -133,28 +133,16 @@ class Kinematics():
             fr = 500
 
         self.output.moveTo(angles, fr)
-        self.position = pos
-        self.azimuth = azimuth
-        self.zenith = zenith
+        self.position = [*pos, azimuth, zenith]
         self.angles = angles
 
-    def linear_move(self, x, y, z, segment=5):
-        # origin of move
-        ox = self.position[0]
-        oy = self.position[1]
-        oz = self.position[2]
-        # delta vector
-        dx = x - ox
-        dy = y - oy
-        dz = z - oz
-        length = math.sqrt(dx * dx + dy * dy + dz * dz)
+    def linear_move(self, pos, azimuth, zenith, segment=1):
+        orig = [*self.position]
+        end = [*pos, azimuth, zenith]
+        delta = np.subtract(end, orig)
+        length = np.linalg.norm(delta)
         segments = math.ceil(length / segment)
         for i in range(segments):
             a = (i + 1) / segments
-
-            # end of current step
-            cx = ox + dx * a
-            cy = oy + dy * a
-            cz = oz + dz * a
-
-            self.set_position(cx, cy, cz, True)
+            curr = np.add(orig, np.multiply(delta, a))
+            self.set_position(curr[0:3],curr[3], curr[4], False)
