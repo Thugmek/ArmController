@@ -79,7 +79,8 @@ class Robot(Entity):
         self.l1 = 386
         self.l2 = 376.3
         self.l3 = 68
-        self.l4 = 38
+        self.l4 = 30
+        self.l5 = 8
 
         self.joints:[Joint] = []
         j0 = Joint(self.l0*self.scale, 1, 1)
@@ -101,7 +102,7 @@ class Robot(Entity):
         j4 = Joint(self.l4*self.scale, 1, 2, j3)
         self.joints.append(j4)
 
-        j5 = Joint(0, 1, 1, j4)
+        j5 = Joint(self.l5*self.scale, 1, 1, j4)
         self.joints.append(j5)
 
     def clear_trajectory(self):

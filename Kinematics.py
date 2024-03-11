@@ -4,6 +4,7 @@ import os
 import Duet
 import sys
 import numpy as np
+from Outputs import DummyOutput
 
 import serial
 
@@ -52,7 +53,8 @@ def rotation_angle( v1, v2, v3):
 
 
 class Kinematics():
-    def __init__(self):
+    def __init__(self, output:DummyOutput):
+        self.output = output
         self.l0 = 213
         self.l1 = 386
         self.l2 = 376.3
@@ -62,8 +64,10 @@ class Kinematics():
         self.joint1_limits = (deg_to_rad(5), deg_to_rad(180), 800)
         self.azimuth_limits = (deg_to_rad(-90), deg_to_rad(90), 3000)
 
+        self.max_feed_rates = [3000, 800, 800, 1000, 1000]
+
         self.position = [0, 300, 300]
-        self.angles = [0, 90, 90]
+        self.angles = [0, 90, 90, 0, 0]
 
     def solve(self, pointE, azimuth, zenith):
         z = self.l4 * math.sin(zenith)
@@ -115,56 +119,23 @@ class Kinematics():
         #print(f"Point C: {pointC}")
         return angle0, angle1, angle2, angle3, azimuth
 
-    # def prismasolve(self, x, y, z):
-    #     if y == 0:
-    #         y = sys.float_info.epsilon
-    #     azimuth = math.atan(x / y)
-    #     radius = math.sqrt(x * x + y * y)
-    #     if radius == 0:
-    #         radius = sys.float_info.epsilon
-    #     length = math.sqrt(x * x + y * y + z * z)
-    #     if length > 2 * self.arm_length:
-    #         raise Exception(f"Point is too far - {length:.2f} mm. Max distance: {2 * self.arm_length % .2} mm")
-    #     zenith = math.atan(z / radius)
-    #
-    #     joint1 = 2 * math.asin((length / 2) / self.arm_length)
-    #     joint2 = math.acos((length / 2) / self.arm_length) + zenith
-    #
-    #     if joint1 < self.joint1_limits[0] or joint1 > self.joint1_limits[1]:
-    #         raise Exception(
-    #             f"Joint1 ({rad_to_deg(joint1):.2f}) outside limit ({rad_to_deg(self.joint1_limits[0])},{rad_to_deg(self.joint1_limits[1])})")
-    #     if joint2 < self.joint2_limits[0] or joint2 > self.joint2_limits[1]:
-    #         raise Exception(
-    #             f"Joint2 ({rad_to_deg(joint2):.2f}) outside limit ({rad_to_deg(self.joint2_limits[0])},{rad_to_deg(self.joint2_limits[1])})")
-    #     if azimuth < self.azimuth_limits[0] or azimuth > self.azimuth_limits[1]:
-    #         raise Exception(
-    #             f"Azimuth ({rad_to_deg(azimuth):.2f}) outside limit ({rad_to_deg(self.azimuth_limits[0])},{rad_to_deg(self.azimuth_limits[1])})")
-    #
-    #     return rad_to_deg(azimuth), rad_to_deg(joint1), rad_to_deg(joint2)
-
-    def set_position(self, x, y, z, calculate_fr=False):
-        angles = self.prismasolve(x, y, z)
+    def set_position(self, pos, azimuth, zenith, calculate_fr=False):
+        angles = self.solve(pos, azimuth, zenith)
 
         if calculate_fr:
-            d1 = abs(angles[0] - self.angles[0])
-            d2 = abs(angles[1] - self.angles[1])
-            d3 = abs(angles[2] - self.angles[2])
-
-            d = math.sqrt(d1 * d1 + d2 * d2 + d3 * d3)
-
-            fr1 = self.azimuth_limits[2] * d / (d1 if d1 != 0 else sys.float_info.epsilon)
-            fr2 = self.joint1_limits[2] * d / (d2 if d2 != 0 else sys.float_info.epsilon)
-            fr3 = self.joint2_limits[2] * d / (d3 if d2 != 0 else sys.float_info.epsilon)
-
-            fr = min(fr1, fr2, fr3)
+            d = np.abs(np.subtract(angles, self.angles))
+            l = np.linalg.norm(d)
+            frs = [0] * 5
+            for i in range(5):
+                frs[i] = self.max_feed_rates * l / (d[i] if d[i] != 0 else sys.float_info.epsilon)
+            fr = np.min(frs)
         else:
             fr = 500
 
-        # Duet.set_angles(angles[0],angles[1],angles[2])
-        # with open("move.g","a") as f:
-        #    f.write(f"G0 X{angles[1]} Y{angles[2]} Z{angles[0]} F{fr}\n")
-        ser.write(f'G0 X{angles[1]} Y{angles[2]} Z{angles[0]} F{fr}\n'.encode())
-        self.position = (x, y, z)
+        self.output.moveTo(angles, fr)
+        self.position = pos
+        self.azimuth = azimuth
+        self.zenith = zenith
         self.angles = angles
 
     def linear_move(self, x, y, z, segment=5):
